@@ -58,22 +58,25 @@ const login = async (request, h) => {
     try {
         const [rows] = await connection.execute('SELECT * FROM users WHERE email = ?', [email]);
         if (rows.length === 0) {
-            return h.response ({ message: 'Invalid Email'}).code(401);
+            return h.response({ message: 'Invalid Email' }).code(401);
         }
-        const user = rows [0];
+        const user = rows[0];
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
-            return h.response ({ message: 'Wrong Password'}).code(401);
+            return h.response({ message: 'Wrong Password' }).code(401);
         }
 
-        const token = jwt.sign({ id: user.id, email: user.email, role: user.role}, process.env.JWT_SECRET, {expiresIn: '1h'});
+        const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-        return h.response({ message: `Login Succesfully Welcome ${user.username}!`,
-                            token: `${token}`}).code(200);
-        
+        return h.response({
+            message: `Login Successfully. Welcome ${user.username}!`,
+            user_id: user.id,
+            token: token
+        }).code(200);
+
     } catch (err) {
         console.error(err);
-        return h.response({ message: 'Internal Server Error'}).code(500);
+        return h.response({ message: 'Internal Server Error' }).code(500);
     } finally {
         connection.end();
     }
@@ -230,6 +233,58 @@ const getDetailUser = async (request, h) => {
     }
 };
 
+const addCalories = async (request, h) => {
+    const { user_id, date, morning = 0, afternoon = 0, evening = 0 } = request.payload;
+    const connection = await createConnection();
+
+    try {
+        const totalCalories = (morning || 0) + (afternoon || 0) + (evening || 0);
+
+        // Check if entry already exists for the date
+        const [rows] = await connection.execute('SELECT * FROM calories WHERE user_id = ? AND date = ?', [user_id, date]);
+        if (rows.length > 0) {
+            // Update existing entry
+            await connection.execute(
+                'UPDATE calories SET morning = ?, afternoon = ?, evening = ?, total_calories = ? WHERE user_id = ? AND date = ?',
+                [morning, afternoon, evening, totalCalories, user_id, date]
+            );
+        } else {
+            // Insert new entry
+            await connection.execute(
+                'INSERT INTO calories (user_id, date, morning, afternoon, evening, total_calories) VALUES (?, ?, ?, ?, ?, ?)',
+                [user_id, date, morning, afternoon, evening, totalCalories]
+            );
+        }
+
+        return h.response({ message: 'Calories added successfully' }).code(200);
+    } catch (err) {
+        console.error(err);
+        return h.response({ message: 'Internal Server Error' }).code(500);
+    } finally {
+        connection.end();
+    }
+};
+
+
+const getDailyCalories = async (request, h) => {
+    const { user_id, date } = request.query;
+    const connection = await createConnection();
+
+    try {
+        const [rows] = await connection.execute('SELECT * FROM calories WHERE user_id = ? AND date = ?', [user_id, date]);
+        if (rows.length === 0) {
+            return h.response({ message: 'No data found for this date' }).code(404);
+        }
+        return h.response(rows[0]).code(200);
+    } catch (err) {
+        console.error(err);
+        return h.response({ message: 'Internal Server Error' }).code(500);
+    } finally {
+        connection.end();
+    }
+};
+
+
 module.exports = {
     register,
     login,
@@ -237,5 +292,7 @@ module.exports = {
     resetPassword,
     getExercise,
     getAllExercise,
-    getDetailUser 
+    getDetailUser,
+    addCalories,
+    getDailyCalories
 };
