@@ -5,7 +5,10 @@ const {
     resetPassword,
     getExercise,
     getAllExercise,
-    getDetailUser
+    getDetailUser,
+    addCalories,
+    getDailyCalories
+    
 } = require('./handler');
 
 const routes = [
@@ -43,6 +46,16 @@ const routes = [
         method: 'GET',
         path: '/user/{id}',
         handler: getDetailUser
+    },
+    {
+        method: 'POST',
+        path: '/calories',
+        handler: addCalories
+    },
+    {
+        method: 'GET',
+        path: '/calories',
+        handler: getDailyCalories
     }
 ];
 
