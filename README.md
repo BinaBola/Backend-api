@@ -4,6 +4,10 @@
 1. [Team ENTS-H113 - MD](#Team-ENTS-H113---md)
 2. [What is BinaBola?](#BinaBola)
 3. [Technology](#Technology)
+4. [Installation](#Installation)
+5. [Database Configuration](#Database-Configuration)
+6. [Running the Project](#Running-the-Project)
+7. [API Endpoints](#API-Endpoints)
 
 
 ## Team ENTS-H1137 - CC
