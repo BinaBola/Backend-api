@@ -69,7 +69,7 @@ const login = async (request, h) => {
         const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
         return h.response({
-            message: `Login Successfully. Welcome ${user.username}!`,
+            message: Login Successfully. Welcome ${user.username}!,
             user_id: user.id,
             token: token
         }).code(200);
@@ -322,6 +322,26 @@ const getExerciseResults = async (request, h) => {
     }
 };
 
+const submission = async (request, h) => {
+    const { id, user_id, video_url } = request.payload;
+    const connection = await createConnection();
+
+    try {
+        // Simpan informasi submission ke dalam database
+        await connection.execute(
+            'INSERT INTO submission (id, user_id, video_url) VALUES (?, ?, ?)',
+            [id, user_id, video_url]
+        );
+
+        return h.response({ message: 'Submission with video link added successfully' }).code(200);
+    } catch (err) {
+        console.error(err);
+        return h.response({ message: 'Internal Server Error' }).code(500);
+    } finally {
+        connection.end();
+    }
+};
+
 
 module.exports = {
     register,
@@ -334,5 +354,6 @@ module.exports = {
     addCalories,
     getDailyCalories,
     addExerciseResult,
-    getExerciseResults
+    getExerciseResults,
+    submission
 };
