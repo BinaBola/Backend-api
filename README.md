@@ -6,7 +6,7 @@
 3. [Technology](#Technology)
 
 
-## Team ENTS-H1137 - MD
+## Team ENTS-H1137 - CC
 
 | Bangkit ID | Name | Learning Path | University |LinkedIn |
 | ---      | ---       | ---       | ---       | ---       |
