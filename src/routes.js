@@ -9,8 +9,8 @@ const {
     addCalories,
     getDailyCalories,
     addExerciseResult,
-    getExerciseResults
-
+    getExerciseResults,
+    submission
     
 } = require('./handler');
 
@@ -69,6 +69,11 @@ const routes = [
         method: 'GET',
         path: '/exercise-results/{user_id}',
         handler: getExerciseResults
+    },
+    {
+        method: 'POST',
+        path: '/submission',
+        handler: submission
     }
 ];
 
