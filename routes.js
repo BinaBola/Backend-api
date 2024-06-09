@@ -7,7 +7,10 @@ const {
     getAllExercise,
     getDetailUser,
     addCalories,
-    getDailyCalories
+    getDailyCalories,
+    addExerciseResult,
+    getExerciseResults
+
     
 } = require('./handler');
 
