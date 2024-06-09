@@ -284,6 +284,44 @@ const getDailyCalories = async (request, h) => {
     }
 };
 
+const addExerciseResult = async (request, h) => {
+    const { user_id, exercise_id, date, duration, calories_burned } = request.payload;
+    const connection = await createConnection();
+
+    try {
+        // Insert new exercise result
+        await connection.execute(
+            'INSERT INTO exercise_results (user_id, exercise_id, date, duration, calories_burned) VALUES (?, ?, ?, ?, ?)',
+            [user_id, exercise_id, date, duration, calories_burned]
+        );
+
+        return h.response({ message: 'Exercise result added successfully' }).code(200);
+    } catch (err) {
+        console.error(err);
+        return h.response({ message: 'Internal Server Error' }).code(500);
+    } finally {
+        connection.end();
+    }
+};
+
+const getExerciseResults = async (request, h) => {
+    const { user_id } = request.params;
+    const connection = await createConnection();
+
+    try {
+        const [rows] = await connection.execute('SELECT * FROM exercise_results WHERE user_id = ?', [user_id]);
+        if (rows.length === 0) {
+            return h.response({ message: 'No exercise results found for this user' }).code(404);
+        }
+        return h.response(rows).code(200);
+    } catch (err) {
+        console.error(err);
+        return h.response({ message: 'Internal Server Error' }).code(500);
+    } finally {
+        connection.end();
+    }
+};
+
 
 module.exports = {
     register,
@@ -294,5 +332,7 @@ module.exports = {
     getAllExercise,
     getDetailUser,
     addCalories,
-    getDailyCalories
+    getDailyCalories,
+    addExerciseResult,
+    getExerciseResults
 };
