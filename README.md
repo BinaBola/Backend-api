@@ -1,7 +1,7 @@
 # BinaBola - ENTS-H113
 ## Table of Contents
 
-1. [Team ENTS-H113 - MD](#Team-ENTS-H113---md)
+1. [Team ENTS-H113 - CC](#Team-ENTS-H113---CC)
 2. [What is BinaBola?](#BinaBola)
 3. [Technology](#Technology)
 4. [Installation](#Installation)
