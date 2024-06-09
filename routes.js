@@ -56,6 +56,16 @@ const routes = [
         method: 'GET',
         path: '/calories',
         handler: getDailyCalories
+    },
+    {
+        method: 'POST',
+        path: '/exercise-results',
+        handler: addExerciseResult
+    },
+    {
+        method: 'GET',
+        path: '/exercise-results/{user_id}',
+        handler: getExerciseResults
     }
 ];
 
