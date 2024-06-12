@@ -7,20 +7,20 @@ require('dotenv').config();
 
 
 const register = async (request, h) => {
-    const { username, email, password, role, nama, tb, bb, umur, gender } = request.payload;
+    const { username, email, password, role, name, height, weight, birth_date, gender } = request.payload;
     const connection = await createConnection();
 
-    const calculateCalories = (tb, bb, umur, gender) => {
+    const calculateCalories = (height, weight, age, gender) => {
         if (gender === 'L') {
-            return 88.36 + (13.4 * bb) + (4.8 * tb) - (5.7 * umur);
+            return 88.36 + (13.4 * weight) + (4.8 * height) - (5.7 * age);
         } else if (gender === 'P') {
-            return 447.6 + (9.2 * bb) + (3.1 * tb) - (4.3 * umur);
+            return 447.6 + (9.2 *  weight) + (3.1 * height) - (4.3 * age);
         }
         return null;
     };
 
     try {
-        if (!username || !email || !password || !role || !nama || !tb || !bb || !umur || !gender) {
+        if (!username || !email || !password || !role || !name || !height || !weight || !birth_date || !gender) {
             return h.response({ message: 'All fields are required' }).code(400);
         }
 
@@ -34,11 +34,21 @@ const register = async (request, h) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const kalori = calculateCalories(tb, bb, umur, gender);
+        const today = new Date();
+        const birthDate = new Date(birth_date);
+        let age = today.getFullYear() - birthDate.getFullYear(); // Ubah dari const ke let
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+
+        const calorie = calculateCalories(height, weight, age, gender);
+
+        console.log(`Registering user with birth_date: ${birth_date}`); // Logging for debugging
 
         const [result] = await connection.execute(
-            'INSERT INTO users (username, email, password, created_at, role, nama_lengkap, tb, bb, umur, gender, kalori) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [username, email, hashedPassword, new Date(), role, nama, tb, bb, umur, gender, kalori]
+            'INSERT INTO users (username, email, password, created_at, role, name, height, weight, birth_date, gender, calorie) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [username, email, hashedPassword, new Date(), role, name, height, weight, birth_date, gender, calorie]
         );
 
         return h.response({ message: 'User registered successfully', user_id: result.insertId }).code(201);
@@ -49,6 +59,9 @@ const register = async (request, h) => {
         connection.end();
     }
 };
+
+
+
 
 
 const login = async (request, h) => {
@@ -69,7 +82,7 @@ const login = async (request, h) => {
         const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
         return h.response({
-            message: Login Successfully. Welcome ${user.username}!,
+            message: `Login Successfully. Welcome ${user.username}!`,
             user_id: user.id,
             token: token
         }).code(200);
@@ -179,7 +192,7 @@ const getExercise = async (request, h) => {
     const connection = await createConnection();
 
     try {
-        const [rows] = await connection.execute('SELECT id, nama, detail, category, step, kalori_keluar, foto, video FROM exercises WHERE id = ?', [id]);
+        const [rows] = await connection.execute('SELECT id, name, detail, category, step, calorie_out, foto, video FROM exercises WHERE id = ?', [id]);
         if (rows.length === 0) {
             return h.response({ message: 'Exercise not found' }).code(404);
         }
@@ -197,7 +210,7 @@ const getAllExercise = async (request, h) => {
     const connection = await createConnection();
 
     try {
-        let query = 'SELECT id, nama, category FROM exercises';
+        let query = 'SELECT id, name, category FROM exercises';
         let params = [];
         if (category) {
             query += ' WHERE category = ?';
@@ -220,7 +233,7 @@ const getDetailUser = async (request, h) => {
     const connection = await createConnection();
 
     try {
-        const [rows] = await connection.execute('SELECT id, nama_lengkap, tb, bb, umur, gender, kalori FROM users WHERE id = ?', [id]);
+        const [rows] = await connection.execute('SELECT id, name, height,  weight, birth_date, gender, calorie FROM users WHERE id = ?', [id]);
         if (rows.length === 0) {
             return h.response({ message: 'User not found' }).code(404);
         }
@@ -234,103 +247,16 @@ const getDetailUser = async (request, h) => {
 };
 
 const addCalories = async (request, h) => {
-    const { user_id, date, morning = 0, afternoon = 0, evening = 0 } = request.payload;
-    const connection = await createConnection();
+    const { id, user_id, date, foods, calorie, amount, category } = request.payload;
+    const total = calorie * amount; // Hitung total calorie
 
-    try {
-        const totalCalories = (morning || 0) + (afternoon || 0) + (evening || 0);
-
-        // Check if entry already exists for the date
-        const [rows] = await connection.execute('SELECT * FROM calories WHERE user_id = ? AND date = ?', [user_id, date]);
-        if (rows.length > 0) {
-            // Update existing entry
-            await connection.execute(
-                'UPDATE calories SET morning = ?, afternoon = ?, evening = ?, total_calories = ? WHERE user_id = ? AND date = ?',
-                [morning, afternoon, evening, totalCalories, user_id, date]
-            );
-        } else {
-            // Insert new entry
-            await connection.execute(
-                'INSERT INTO calories (user_id, date, morning, afternoon, evening, total_calories) VALUES (?, ?, ?, ?, ?, ?)',
-                [user_id, date, morning, afternoon, evening, totalCalories]
-            );
-        }
-
-        return h.response({ message: 'Calories added successfully' }).code(200);
-    } catch (err) {
-        console.error(err);
-        return h.response({ message: 'Internal Server Error' }).code(500);
-    } finally {
-        connection.end();
-    }
-};
-
-
-const getDailyCalories = async (request, h) => {
-    const { user_id, date } = request.query;
-    const connection = await createConnection();
-
-    try {
-        const [rows] = await connection.execute('SELECT * FROM calories WHERE user_id = ? AND date = ?', [user_id, date]);
-        if (rows.length === 0) {
-            return h.response({ message: 'No data found for this date' }).code(404);
-        }
-        return h.response(rows[0]).code(200);
-    } catch (err) {
-        console.error(err);
-        return h.response({ message: 'Internal Server Error' }).code(500);
-    } finally {
-        connection.end();
-    }
-};
-
-const addExerciseResult = async (request, h) => {
-    const { user_id, exercise_id, date, duration, calories_burned } = request.payload;
-    const connection = await createConnection();
-
-    try {
-        // Insert new exercise result
-        await connection.execute(
-            'INSERT INTO exercise_results (user_id, exercise_id, date, duration, calories_burned) VALUES (?, ?, ?, ?, ?)',
-            [user_id, exercise_id, date, duration, calories_burned]
-        );
-
-        return h.response({ message: 'Exercise result added successfully' }).code(200);
-    } catch (err) {
-        console.error(err);
-        return h.response({ message: 'Internal Server Error' }).code(500);
-    } finally {
-        connection.end();
-    }
-};
-
-const getExerciseResults = async (request, h) => {
-    const { user_id } = request.params;
-    const connection = await createConnection();
-
-    try {
-        const [rows] = await connection.execute('SELECT * FROM exercise_results WHERE user_id = ?', [user_id]);
-        if (rows.length === 0) {
-            return h.response({ message: 'No exercise results found for this user' }).code(404);
-        }
-        return h.response(rows).code(200);
-    } catch (err) {
-        console.error(err);
-        return h.response({ message: 'Internal Server Error' }).code(500);
-    } finally {
-        connection.end();
-    }
-};
-
-const submission = async (request, h) => {
-    const { id, user_id, video_url } = request.payload;
     const connection = await createConnection();
 
     try {
         // Simpan informasi submission ke dalam database
         await connection.execute(
-            'INSERT INTO submission (id, user_id, video_url) VALUES (?, ?, ?)',
-            [id, user_id, video_url]
+            'INSERT INTO calories (user_id, date, foods, calorie, amount, category, total) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [user_id, date, foods, calorie, amount, category, total]
         );
 
         return h.response({ message: 'Submission with video link added successfully' }).code(200);
@@ -343,6 +269,104 @@ const submission = async (request, h) => {
 };
 
 
+const getDailyCalories = async (request, h) => {
+    const { user_id, date } = request.params;
+    const connection = await createConnection();
+    
+    try {
+        // Validasi input
+        if (!user_id || !date) {
+            return h.response({ message: 'User ID and date are required' }).code(400);
+        }
+    
+        // Pilih semua kolom dari tabel
+        const [rows] = await connection.execute('SELECT user_id, category, total FROM calories WHERE user_id = ? AND date = ?', [user_id, date]);
+        if (rows.length === 0) {
+            return h.response({ message: 'No data found for this date' }).code(404);
+        }
+        return h.response(rows).code(200);
+    } catch (err) {
+        console.error(err);
+        return h.response({ message: 'Internal Server Error' }).code(500);
+    } finally {
+        connection.end();
+    }
+}    
+ 
+
+const submission = async (request, h) => {
+    const { user_id, video_url } = request.payload;
+    const connection = await createConnection();
+
+    try {
+        // Simpan informasi submission ke dalam database
+        await connection.execute(
+            'INSERT INTO submission (user_id, video_url) VALUES (?, ?)',
+            [user_id, video_url]
+        );
+
+        return h.response({ message: 'Submission with video link added successfully' }).code(200);
+    } catch (err) {
+        console.error(err);
+        return h.response({ message: 'Internal Server Error' }).code(500);
+    } finally {
+        connection.end();
+    }
+};
+
+const DailyMission = async (request, h) => {
+    const { user_id, exercise_id, date, status } = request.payload;
+    const connection = await createConnection();
+
+    try {
+        // Simpan informasi submission ke dalam database
+        await connection.execute(
+            'INSERT INTO daily_missions (user_id, exercise_id, date, status) VALUES (?, ?, ?, ?)',
+            [user_id, exercise_id, date, status]
+        );
+
+        return h.response({ message: 'Daily mission is completed' }).code(200);
+    } catch (err) {
+        console.error(err);
+        return h.response({ message: 'Internal Server Error' }).code(500);
+    } finally {
+        connection.end();
+    }
+};
+
+const checkDailyMissionStatus = async (user_id, date) => {
+    const connection = await createConnection();
+    try {
+        const [rows] = await connection.execute('SELECT status FROM daily_missions WHERE user_id = ? AND date = ?', [user_id, date]);
+        if (rows.length > 0) {
+            return rows[0].status;
+        }
+    } finally {
+        await connection.end();
+    }
+};
+
+// Endpoint untuk menyelesaikan misi harian
+const completeDailyMission = async (request, h) => {
+    const { user_id } = request.payload;
+    const today = new Date().toISOString().split('T')[0]; // format YYYY-MM-DD
+
+    try {
+        const status = await checkDailyMissionStatus(user_id, today);
+        if (status) {
+            return h.response({ message: 'Daily mission already completed today' }).code(200);
+        } else {
+            return h.response({ message: 'Daily mission not completed' }).code(200);
+        }
+    } catch (err) {
+        console.error(err);
+        return h.response({ message: 'Internal Server Error' }).code(500);
+    }
+};
+
+
+
+
 module.exports = {
     register,
     login,
@@ -353,7 +377,7 @@ module.exports = {
     getDetailUser,
     addCalories,
     getDailyCalories,
-    addExerciseResult,
-    getExerciseResults,
-    submission
+    submission,
+    DailyMission,
+    completeDailyMission
 };
