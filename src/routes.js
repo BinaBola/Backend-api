@@ -8,9 +8,9 @@ const {
     getDetailUser,
     addCalories,
     getDailyCalories,
-    addExerciseResult,
-    getExerciseResults,
-    submission
+    submission,
+    DailyMission,
+    completeDailyMission
     
 } = require('./handler');
 
@@ -57,24 +57,24 @@ const routes = [
     },
     {
         method: 'GET',
-        path: '/calories',
+        path: '/calories/{user_id}/{date}',
         handler: getDailyCalories
-    },
-    {
-        method: 'POST',
-        path: '/exercise-results',
-        handler: addExerciseResult
-    },
-    {
-        method: 'GET',
-        path: '/exercise-results/{user_id}',
-        handler: getExerciseResults
     },
     {
         method: 'POST',
         path: '/submission',
         handler: submission
-    }
+    },
+    {
+        method: 'POST',
+        path: '/mission',
+        handler: DailyMission
+    },
+    {
+        method: 'POST',
+        path: '/daily-mission/complete',
+        handler: completeDailyMission
+    },
 ];
 
 module.exports = routes;
