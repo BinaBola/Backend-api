@@ -189,14 +189,37 @@ const resetPassword = async (request, h) => {
 
 const getExercise = async (request, h) => {
     const { id } = request.params;
+    const today = new Date().toISOString().split('T')[0];
+    const { user_id, exercise_id} = request.query; // Asumsikan id_user dan date didapatkan dari query parameter
     const connection = await createConnection();
 
     try {
-        const [rows] = await connection.execute('SELECT id, name, detail, category, step, calorie_out, foto, video FROM exercises WHERE id = ?', [id]);
-        if (rows.length === 0) {
+        // Query untuk mendapatkan exercise
+        const [exerciseRows] = await connection.execute(
+            'SELECT id, name, detail, category, step, calorie_out, foto, video FROM exercises WHERE id = ?', [id]
+        );
+        
+        if (exerciseRows.length === 0) {
             return h.response({ message: 'Exercise not found' }).code(404);
         }
-        return h.response(rows[0]).code(200);
+
+        // Query untuk mendapatkan status dari daily_missions
+        const [statusRows] = await connection.execute(
+            'SELECT status FROM daily_missions WHERE user_id = ? AND exercise_id = ? AND date = ?', [user_id, exercise_id, today]
+        );
+
+        let status = 0; // Default status
+        if (statusRows.length > 0 && statusRows[0].status === 1) {
+            status = 1;
+        }
+
+        // Menggabungkan hasil query exercise dan status
+        const result = {
+            ...exerciseRows[0],
+            status: status
+        };
+
+        return h.response(result).code(200);
     } catch (err) {
         console.error(err);
         return h.response({ message: 'Internal Server Error' }).code(500);
@@ -205,12 +228,13 @@ const getExercise = async (request, h) => {
     }
 };
 
+
 const getAllExercise = async (request, h) => {
     const { category } = request.query;
     const connection = await createConnection();
 
     try {
-        let query = 'SELECT id, name, category FROM exercises';
+        let query = 'SELECT id, name, duration, category, calorie_out, foto FROM exercises';
         let params = [];
         if (category) {
             query += ' WHERE category = ?';
@@ -247,7 +271,7 @@ const getDetailUser = async (request, h) => {
 };
 
 const addCalories = async (request, h) => {
-    const { id, user_id, date, foods, calorie, amount, category } = request.payload;
+    const { user_id, date, foods, calorie, amount, category } = request.payload;
     const total = calorie * amount; // Hitung total calorie
 
     const connection = await createConnection();
@@ -259,7 +283,7 @@ const addCalories = async (request, h) => {
             [user_id, date, foods, calorie, amount, category, total]
         );
 
-        return h.response({ message: 'Submission with video link added successfully' }).code(200);
+        return h.response({ message: 'Calories are added successfully' }).code(200);
     } catch (err) {
         console.error(err);
         return h.response({ message: 'Internal Server Error' }).code(500);
@@ -280,7 +304,7 @@ const getDailyCalories = async (request, h) => {
         }
     
         // Pilih semua kolom dari tabel
-        const [rows] = await connection.execute('SELECT user_id, category, total FROM calories WHERE user_id = ? AND date = ?', [user_id, date]);
+        const [rows] = await connection.execute('SELECT user_id, foods, category, total FROM calories WHERE user_id = ? AND date = ?', [user_id, date]);
         if (rows.length === 0) {
             return h.response({ message: 'No data found for this date' }).code(404);
         }
@@ -314,18 +338,20 @@ const submission = async (request, h) => {
     }
 };
 
-const DailyMission = async (request, h) => {
-    const { user_id, exercise_id, date, status } = request.payload;
+const StartMission = async (request, h) => {
+    const { user_id, exercise_id} = request.payload;
+    const today = new Date().toISOString().split('T')[0];
+    const status = 0
     const connection = await createConnection();
 
     try {
         // Simpan informasi submission ke dalam database
         await connection.execute(
             'INSERT INTO daily_missions (user_id, exercise_id, date, status) VALUES (?, ?, ?, ?)',
-            [user_id, exercise_id, date, status]
+            [user_id, exercise_id, today, status]
         );
 
-        return h.response({ message: 'Daily mission is completed' }).code(200);
+        return h.response({ message: 'Daily mission is started' }).code(200);
     } catch (err) {
         console.error(err);
         return h.response({ message: 'Internal Server Error' }).code(500);
@@ -334,10 +360,39 @@ const DailyMission = async (request, h) => {
     }
 };
 
-const checkDailyMissionStatus = async (user_id, date) => {
+const FinishMission = async (request, h) => {
+    const { user_id, exercise_id } = request.payload;
+    const today = new Date().toISOString().split('T')[0];
+    const newStatus = 1; // Status yang akan diupdate
+
+    const connection = await createConnection();
+
+    try {
+        // Update status daily mission ke '1'
+        const [result] = await connection.execute(
+            'UPDATE daily_missions SET status = ? WHERE user_id = ? AND exercise_id = ? AND date = ?',
+            [newStatus, user_id, exercise_id, today]
+        );
+
+        if (result.affectedRows === 0) {
+            return h.response({ message: 'Daily mission not found' }).code(404);
+        }
+
+        return h.response({ message: 'Daily mission status updated to completed' }).code(200);
+    } catch (err) {
+        console.error(err);
+        return h.response({ message: 'Internal Server Error' }).code(500);
+    } finally {
+        connection.end();
+    }
+};
+
+
+
+const checkDailyMissionStatus = async (user_id, exercise_id, date) => {
     const connection = await createConnection();
     try {
-        const [rows] = await connection.execute('SELECT status FROM daily_missions WHERE user_id = ? AND date = ?', [user_id, date]);
+        const [rows] = await connection.execute('SELECT status FROM daily_missions WHERE user_id = ? AND exercise_id = ? AND date = ?', [user_id, exercise_id, date]);
         if (rows.length > 0) {
             return rows[0].status;
         }
@@ -348,11 +403,11 @@ const checkDailyMissionStatus = async (user_id, date) => {
 
 // Endpoint untuk menyelesaikan misi harian
 const completeDailyMission = async (request, h) => {
-    const { user_id } = request.payload;
+    const { user_id, exercise_id } = request.payload;
     const today = new Date().toISOString().split('T')[0]; // format YYYY-MM-DD
 
     try {
-        const status = await checkDailyMissionStatus(user_id, today);
+        const status = await checkDailyMissionStatus(user_id, exercise_id, today);
         if (status) {
             return h.response({ message: 'Daily mission already completed today' }).code(200);
         } else {
@@ -378,6 +433,7 @@ module.exports = {
     addCalories,
     getDailyCalories,
     submission,
-    DailyMission,
+    StartMission,
+    FinishMission,
     completeDailyMission
 };
