@@ -3,7 +3,6 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
-const axios = require('axios');
 require('dotenv').config();
 
 
@@ -76,34 +75,22 @@ const login = async (request, h) => {
         if (!isValidPassword) {
             return h.response({ message: 'Wrong Password' }).code(401);
         }
-
+    
         const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
-
-        const response = h.response({
+    
+        return h.response({
             message: `Login Successfully. Welcome ${user.username}!`,
             user_id: user.id,
             token: token
         }).code(200);
-
-        // Send a request to keep Cloud Run active after sending the response
-        setImmediate(async () => {
-            const cloudRunUrl = process.env.CLOUD_RUN; // Ganti dengan URL Cloud Run Anda
-            try {
-                await axios.get(cloudRunUrl);
-                console.log("Cloud Run ping successful");
-            } catch (error) {
-                console.error("Error pinging Cloud Run:", error.message);
-            }
-        });
-
-        return response;
-
+    
     } catch (err) {
         console.error(err);
         return h.response({ message: 'Internal Server Error' }).code(500);
     } finally {
         connection.end();
     }
+    
 };
 
 const requestPasswordReset = async (request, h) => {
