@@ -91,7 +91,7 @@ The server will run on http://0.0.0.0:8080.
 
 Here are the available API endpoints for the Binabola project:
 
-# User Management
+### User Management
 
 Register a new user:
 
@@ -123,7 +123,7 @@ Get user details:
 GET /user/{id}
 ```
 
-# Exercise Management
+### Exercise Management
 
 Get an exercise by ID:
 
@@ -150,7 +150,7 @@ Get daily calories for a user:
 GET /calories/{user_id}/{date}
 ```
 
-# Submission and Daily Missions
+### Submission and Daily Missions
 
 Submit a video link:
 
