@@ -62,8 +62,6 @@ const register = async (request, h) => {
 
 
 
-
-
 const login = async (request, h) => {
     const { email, password } = request.payload;
     const connection = await createConnection();
@@ -190,13 +188,13 @@ const resetPassword = async (request, h) => {
 const getExercise = async (request, h) => {
     const { id } = request.params;
     const today = new Date().toISOString().split('T')[0];
-    const { user_id, exercise_id} = request.query; // Asumsikan id_user dan date didapatkan dari query parameter
+    const { user_id, exercise_id } = request.query; // Asumsikan user_id dan exercise_id didapatkan dari query parameter
     const connection = await createConnection();
 
     try {
         // Query untuk mendapatkan exercise
         const [exerciseRows] = await connection.execute(
-            'SELECT id, name, detail, category, step, calorie_out, foto, video FROM exercises WHERE id = ?', [id]
+            'SELECT id, name, detail, category, step, calorie_out, foto, video, body_part_needed, is_support_interactive, interactive_setting_id, interactive_body_part_segment_value_id, submission FROM exercises WHERE id = ?', [id]
         );
         
         if (exerciseRows.length === 0) {
@@ -211,12 +209,25 @@ const getExercise = async (request, h) => {
         let status = 0; // Default status
         if (statusRows.length > 0 && statusRows[0].status === 1) {
             status = 1;
+        } else if (statusRows.length > 0 && statusRows[0].status === 2) {
+            status = 2;
         }
 
-        // Menggabungkan hasil query exercise dan status
+        // Query untuk mendapatkan video_url dari submission
+        const [submissionRows] = await connection.execute(
+            'SELECT video_url FROM submission WHERE user_id = ? AND exercise_id = ? AND date = ?', [user_id, exercise_id, today]
+        );
+
+        let video_url = null;
+        if (submissionRows.length > 0) {
+            video_url = submissionRows[0].video_url;
+        }
+
+        // Menggabungkan hasil query exercise, status, dan video_url
         const result = {
             ...exerciseRows[0],
-            status: status
+            status: status,
+            video_url: video_url
         };
 
         return h.response(result).code(200);
@@ -227,6 +238,7 @@ const getExercise = async (request, h) => {
         connection.end();
     }
 };
+
 
 
 const getAllExercise = async (request, h) => {
@@ -319,14 +331,15 @@ const getDailyCalories = async (request, h) => {
  
 
 const submission = async (request, h) => {
-    const { user_id, video_url } = request.payload;
+    const { user_id, exercise_id, video_url } = request.payload;
+    const today = new Date().toISOString().split('T')[0];
     const connection = await createConnection();
 
     try {
         // Simpan informasi submission ke dalam database
         await connection.execute(
-            'INSERT INTO submission (user_id, video_url) VALUES (?, ?)',
-            [user_id, video_url]
+            'INSERT INTO submission (user_id, exercise_id, video_url, date) VALUES (?, ?, ?, ?)',
+            [user_id, exercise_id, video_url, today]
         );
 
         return h.response({ message: 'Submission with video link added successfully' }).code(200);
@@ -341,7 +354,7 @@ const submission = async (request, h) => {
 const StartMission = async (request, h) => {
     const { user_id, exercise_id} = request.payload;
     const today = new Date().toISOString().split('T')[0];
-    const status = 0
+    const status = 1
     const connection = await createConnection();
 
     try {
@@ -363,7 +376,7 @@ const StartMission = async (request, h) => {
 const FinishMission = async (request, h) => {
     const { user_id, exercise_id } = request.payload;
     const today = new Date().toISOString().split('T')[0];
-    const newStatus = 1; // Status yang akan diupdate
+    const newStatus = 2; // Status yang akan diupdate
 
     const connection = await createConnection();
 
@@ -389,36 +402,6 @@ const FinishMission = async (request, h) => {
 
 
 
-const checkDailyMissionStatus = async (user_id, exercise_id, date) => {
-    const connection = await createConnection();
-    try {
-        const [rows] = await connection.execute('SELECT status FROM daily_missions WHERE user_id = ? AND exercise_id = ? AND date = ?', [user_id, exercise_id, date]);
-        if (rows.length > 0) {
-            return rows[0].status;
-        }
-    } finally {
-        await connection.end();
-    }
-};
-
-// Endpoint untuk menyelesaikan misi harian
-const completeDailyMission = async (request, h) => {
-    const { user_id, exercise_id } = request.payload;
-    const today = new Date().toISOString().split('T')[0]; // format YYYY-MM-DD
-
-    try {
-        const status = await checkDailyMissionStatus(user_id, exercise_id, today);
-        if (status) {
-            return h.response({ message: 'Daily mission already completed today' }).code(200);
-        } else {
-            return h.response({ message: 'Daily mission not completed' }).code(200);
-        }
-    } catch (err) {
-        console.error(err);
-        return h.response({ message: 'Internal Server Error' }).code(500);
-    }
-};
-
 
 
 
@@ -434,6 +417,5 @@ module.exports = {
     getDailyCalories,
     submission,
     StartMission,
-    FinishMission,
-    completeDailyMission
+    FinishMission
 };

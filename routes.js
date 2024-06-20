@@ -10,8 +10,7 @@ const {
     getDailyCalories,
     submission,
     StartMission,
-    FinishMission,
-    completeDailyMission
+    FinishMission
     
 } = require('./handler');
 
@@ -75,11 +74,6 @@ const routes = [
         method: 'POST',
         path: '/finishmission',
         handler: FinishMission
-    },
-    {
-        method: 'POST',
-        path: '/daily-mission/complete',
-        handler: completeDailyMission
     },
 ];
 
