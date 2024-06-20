@@ -25,12 +25,18 @@ this application has the potential to make a real difference in the lives of Ind
 The Binabola project is built using the following technologies:
 
 Node.js    : A JavaScript runtime built on Chrome's V8 JavaScript engine.
+
 Hapi.js    : A rich framework for building applications and services.
+
 MySQL      : A relational database management system.
+
 JWT        : JSON Web Tokens for authentication.
+
 Bcrypt     : A library to help hash passwords.
-Nodemailer  : A module for Node.js applications to send email.
-Passport  : A library for authentication.
+
+Nodemailer : A module for Node.js applications to send email.
+
+Passport   : A library for authentication.
 
 ## Installation
 
