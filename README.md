@@ -45,8 +45,8 @@ To set up the project locally, follow these steps:
 Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/binabola.git
-cd binabola
+git clone https://github.com/BinaBola/Backend-api.git
+cd Backend-api
 ```
 
 Install the dependencies:
