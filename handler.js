@@ -88,7 +88,7 @@ const login = async (request, h) => {
 
         // Send a request to keep Cloud Run active after sending the response
         setImmediate(async () => {
-            const cloudRunUrl = "https://fooddetection-cjhlbbk5va-et.a.run.app/status"; // Ganti dengan URL Cloud Run Anda
+            const cloudRunUrl = process.env.CLOUD_RUN; // Ganti dengan URL Cloud Run Anda
             try {
                 await axios.get(cloudRunUrl);
                 console.log("Cloud Run ping successful");
