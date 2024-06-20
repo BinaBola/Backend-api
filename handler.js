@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const axios = require('axios');
 require('dotenv').config();
 
 
@@ -79,11 +80,24 @@ const login = async (request, h) => {
 
         const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-        return h.response({
+        const response = h.response({
             message: `Login Successfully. Welcome ${user.username}!`,
             user_id: user.id,
             token: token
         }).code(200);
+
+        // Send a request to keep Cloud Run active after sending the response
+        setImmediate(async () => {
+            const cloudRunUrl = "https://fooddetection-cjhlbbk5va-et.a.run.app/status"; // Ganti dengan URL Cloud Run Anda
+            try {
+                await axios.get(cloudRunUrl);
+                console.log("Cloud Run ping successful");
+            } catch (error) {
+                console.error("Error pinging Cloud Run:", error.message);
+            }
+        });
+
+        return response;
 
     } catch (err) {
         console.error(err);
