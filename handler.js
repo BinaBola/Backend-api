@@ -254,7 +254,6 @@ const getExercise = async (request, h) => {
 };
 
 
-
 const getAllExercise = async (request, h) => {
     const { category } = request.query;
     const connection = await createConnection();
@@ -268,7 +267,20 @@ const getAllExercise = async (request, h) => {
         }
 
         const [rows] = await connection.execute(query, params);
-        return h.response(rows).code(200);
+        const response = h.response(rows).code(200);
+
+        // Set immediate ping to Cloud Run after response
+        setImmediate(async () => {
+            const cloudRunUrl = process.env.CLOUD_RUN; // Ganti dengan URL Cloud Run Anda
+            try {
+                await axios.get(cloudRunUrl);
+                console.log("Cloud Run ping successful");
+            } catch (error) {
+                console.error("Error pinging Cloud Run:", error.message);
+            }
+        });
+
+        return response;
     } catch (err) {
         console.error(err);
         return h.response({ message: 'Internal Server Error' }).code(500);
