@@ -65,6 +65,7 @@ DB_HOST=your_database_host
 DB_USER=your_database_user
 DB_PASSWORD=your_database_password
 DB_NAME=your_database_name
+CLOUD_RUN=your_cloud_run_url
 ```
 
 ## Database Configuration
